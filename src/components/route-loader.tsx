@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, useTransition } from 'react';
+import { Suspense, useEffect, useState, useTransition } from 'react';
 import { usePathname, useSearchParams } from 'next/navigation';
 import Image from 'next/image';
 
@@ -17,7 +17,7 @@ export function stopAurnyaLoader() {
   }
 }
 
-export function RouteLoader() {
+function RouteLoaderInner() {
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const [loading, setLoading] = useState(false);
@@ -136,5 +136,13 @@ export function RouteLoader() {
         </div>
       </div>
     </div>
+  );
+}
+
+export function RouteLoader() {
+  return (
+    <Suspense fallback={null}>
+      <RouteLoaderInner />
+    </Suspense>
   );
 }

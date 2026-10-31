@@ -1,3 +1,4 @@
+import { Suspense } from 'react';
 import type { Metadata, Viewport } from 'next';
 import localFont from 'next/font/local';
 import { themeBootScript } from '@/lib/theme-boot';
@@ -43,7 +44,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         ] }} />
         <AuthProvider>
           <ShopProvider>
-            <RouteLoader />
+            <Suspense fallback={null}>
+              <RouteLoader />
+            </Suspense>
             <a href="#main" className="sr-only focus:not-sr-only focus:fixed focus:left-2 focus:top-2 focus:z-[100] focus:bg-charcoal focus:px-4 focus:py-2 focus:text-ivory">Skip to content</a>
             <AnnouncementBar /><Header /><main id="main">{children}</main><Footer /><CartDrawer />
           </ShopProvider>
