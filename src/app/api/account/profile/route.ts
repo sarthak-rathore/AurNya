@@ -1,0 +1,24 @@
+import { NextResponse } from 'next/server';
+import { z } from 'zod';
+import { getSessionUser } from '@/lib/auth';
+import { updateUser } from '@/db/accounts';
+import { getDb } from '@/db/client';
+
+const schema = z.object({
+  firstName: z.string().min(1).max(100).optional(),
+  lastName: z.string().max(100).optional(),
+  phone: z.string().max(20).optional(),
+});
+
+export async function PATCH(req: Request) {
+  const session = await getSessionUser();
+  if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  try {
+    const data = schema.parse(await req.json());
+    await updateUser(session.sub, data);
+    return NextResponse.json({ ok: true });
+  } catch (err) {
+    if (err instanceof z.ZodError) return NextResponse.json({ error: err.issues[0]?.message }, { status: 400 });
+    return NextResponse.json({ error: 'Failed to update profile' }, { status: 500 });
+  }
+}

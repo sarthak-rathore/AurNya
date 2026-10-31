@@ -1,0 +1,50 @@
+{
+  "name": "aurnya",
+  "version": "0.5.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev --webpack",
+    "build": "next build --webpack",
+    "start": "next start",
+    "lint": "eslint .",
+    "typecheck": "tsc --noEmit",
+    "test": "tsx --test src/lib/*.test.ts src/db/*.test.ts src/app/api/cart/quote/*.test.ts",
+    "test:e2e": "playwright test",
+    "db:generate": "drizzle-kit generate",
+    "db:migrate": "tsx src/db/cli.ts migrate",
+    "db:seed": "tsx src/db/cli.ts seed",
+    "db:purge-demo": "tsx src/db/cli.ts purge-demo",
+    "db:check": "tsx src/db/cli.ts check",
+    "prebuild": "tsx src/db/cli.ts prebuild"
+  },
+  "dependencies": {
+    "@neondatabase/serverless": "^1.2.0",
+    "@next/swc-wasm-nodejs": "^16.4.2",
+    "drizzle-orm": "^0.45.4",
+    "next": "16.4.2",
+    "react": "19.1.10",
+    "react-dom": "19.1.10",
+    "zod": "^3.24.0"
+  },
+  "devDependencies": {
+    "@axe-core/playwright": "4.14.0",
+    "@electric-sql/pglite": "^0.5.11",
+    "@playwright/test": "1.64.1",
+    "@types/node": "20.19.43",
+    "@types/pg": "^8.23.1",
+    "@types/react": "19.3.0",
+    "@types/react-dom": "19.3.0",
+    "autoprefixer": "10.6.1",
+    "drizzle-kit": "^0.31.11",
+    "eslint": "9.39.5",
+    "eslint-config-next": "16.4.2",
+    "pg": "^8.23.1",
+    "postcss": "8.5.31",
+    "tailwindcss": "3.4.19",
+    "tsx": "4.23.15",
+    "typescript": "5.9.3"
+  },
+  "engines": {
+    "node": ">=20.9"
+  }
+}

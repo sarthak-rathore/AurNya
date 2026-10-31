@@ -1,0 +1,3 @@
+// Runs in <head> before the page is painted, so visitors never see a flash of the wrong theme.
+// It must stay in step with src/lib/theme.ts (same storage key, same colours).
+export const themeBootScript = `(function(){try{var s=localStorage.getItem('aur_theme');var p=(s==='light'||s==='dark')?s:'system';var t=p==='system'?(matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light'):p;var d=document.documentElement;d.dataset.theme=t;d.dataset.themePref=p;d.style.colorScheme=t;var m=document.createElement('meta');m.name='theme-color';m.content=t==='dark'?'#18151D':'#FBF7EE';document.head.appendChild(m)}catch(e){}})()`;

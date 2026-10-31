@@ -1,0 +1,58 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Colour themes. Values are "R G B" so Tailwind can add opacity (bg-ivory/95).
+   Light is the default. Dark is used when the visitor chose it, or (with no choice saved) when their device prefers dark.
+   The dark values appear twice on purpose: once for a saved choice, once as the no-JavaScript fallback. Keep both blocks identical. */
+:root {
+    --c-ivory: 251 247 238; --c-cream: 244 235 216; --c-champagne: 228 210 168; --c-charcoal: 43 39 48;
+    --c-gold: 176 127 42; --c-gold-ink: 124 84 19; --c-sage: 221 229 192; --c-sage-deep: 169 201 138; --c-lavender: 187 163 217;
+    --c-plum: 75 58 94; --c-muted: 111 102 118; --c-surface: 255 255 255; --c-danger: 160 35 35; --c-success: 47 107 58;
+    --c-bar: 43 39 48; --c-bone: 244 235 216; --c-deep: 75 58 94; --c-shade: 43 39 48; --c-scrim: 43 39 48;
+  color-scheme: light;
+}
+:root[data-theme='dark'] {
+    --c-ivory: 24 21 29; --c-cream: 39 35 47; --c-champagne: 228 210 168; --c-charcoal: 243 238 228;
+    --c-gold: 217 168 78; --c-gold-ink: 224 180 105; --c-sage: 47 59 43; --c-sage-deep: 110 140 90; --c-lavender: 187 163 217;
+    --c-plum: 187 163 217; --c-muted: 185 175 192; --c-surface: 42 38 48; --c-danger: 255 155 155; --c-success: 143 209 155;
+    --c-bar: 12 10 15; --c-bone: 244 235 216; --c-deep: 38 30 49; --c-shade: 0 0 0; --c-scrim: 0 0 0;
+  color-scheme: dark;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme]) {
+    --c-ivory: 24 21 29; --c-cream: 39 35 47; --c-champagne: 228 210 168; --c-charcoal: 243 238 228;
+    --c-gold: 217 168 78; --c-gold-ink: 224 180 105; --c-sage: 47 59 43; --c-sage-deep: 110 140 90; --c-lavender: 187 163 217;
+    --c-plum: 187 163 217; --c-muted: 185 175 192; --c-surface: 42 38 48; --c-danger: 255 155 155; --c-success: 143 209 155;
+    --c-bar: 12 10 15; --c-bone: 244 235 216; --c-deep: 38 30 49; --c-shade: 0 0 0; --c-scrim: 0 0 0;
+    color-scheme: dark;
+  }
+}
+
+body { @apply bg-ivory font-sans text-charcoal antialiased; }
+:focus-visible { outline: 2px solid rgb(var(--c-gold)); outline-offset: 3px; }
+footer :focus-visible { outline-color: rgb(var(--c-champagne)); }
+html { scroll-behavior: smooth; }
+
+@keyframes coin-flip {
+  0% { transform: perspective(800px) rotateY(0deg); }
+  50% { transform: perspective(800px) rotateY(180deg) scale(1.06); }
+  100% { transform: perspective(800px) rotateY(360deg); }
+}
+
+@keyframes shimmer-move {
+  100% { transform: translateX(100%); }
+}
+
+.animate-coin-spin {
+  animation: coin-flip 1.8s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+  transform-style: preserve-3d;
+  will-change: transform;
+}
+
+@keyframes shimmer {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(100%); }
+}
+
+@media (prefers-reduced-motion: reduce) { * { animation: none !important; transition: none !important; scroll-behavior: auto !important; } }

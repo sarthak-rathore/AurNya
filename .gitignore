@@ -1,0 +1,11 @@
+node_modules
+.next
+.env
+.env.local
+next-env.d.ts
+*.tsbuildinfo
+
+# test output
+test-results/
+playwright-report/
+.tmp-migration-check-*/
