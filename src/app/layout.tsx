@@ -109,25 +109,23 @@ export default function RootLayout({
           <ShopProvider>
             <Suspense fallback={null}>
               <RouteLoader />
-            </Suspense>
-            <a
-              href="#main"
-              className="sr-only focus:not-sr-only focus:fixed focus:left-2 focus:top-2 focus:z-[100] focus:bg-charcoal focus:px-4 focus:py-2 focus:text-ivory"
-            >
-              Skip to content
-            </a>
-            {/* WRAP THE ANNOUNCEMENT BAR IN SUSPENSE */}
-            <Suspense fallback={null}>
+
+              <a
+                href="#main"
+                className="sr-only focus:not-sr-only focus:fixed focus:left-2 focus:top-2 focus:z-[100] focus:bg-charcoal focus:px-4 focus:py-2 focus:text-ivory"
+              >
+                Skip to content
+              </a>
+              {/* WRAP THE ANNOUNCEMENT BAR IN SUSPENSE */}
+
               <AnnouncementBar />
-            </Suspense>
-            <Suspense fallback={null}>
+
               <Header />
-            </Suspense>
-            <main id="main">{children}</main>
-            <Suspense fallback={null}>
+
+              <main id="main">{children}</main>
+
               <Footer />
-            </Suspense>
-            <Suspense fallback={null}>
+
               <CartDrawer />
             </Suspense>
           </ShopProvider>
