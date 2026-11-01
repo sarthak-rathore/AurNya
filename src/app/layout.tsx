@@ -116,7 +116,10 @@ export default function RootLayout({
             >
               Skip to content
             </a>
-            <AnnouncementBar />
+            {/* WRAP THE ANNOUNCEMENT BAR IN SUSPENSE */}
+            <Suspense fallback={null}>
+              <AnnouncementBar />
+            </Suspense>
             <Suspense fallback={null}>
               <Header />
             </Suspense>
