@@ -1,8 +1,10 @@
 import { NextResponse } from 'next/server';
 import { eq } from 'drizzle-orm';
+import { releaseExpiredOrders } from '@/db/inventory';
+import { CouponUsedUpError, OutOfStockError, placeOrder } from '@/db/place-order';
 import { getSessionUser } from '@/lib/auth';
 import { getDb } from '@/db/client';
-import { orders, orderItems, orderEvents } from '@/db/schema';
+import { orders } from '@/db/schema';
 import { catalog } from '@/lib/catalog';
 import { couponStore } from '@/lib/coupon-store';
 import { parseQuoteRequest, quote } from '@/lib/quote';
@@ -83,63 +85,31 @@ export async function POST(req: Request) {
   const taxPaise = 0; // No tax for now
   const totalPaise = q.subtotalPaise - q.discountPaise + shippingPaise + taxPaise;
 
-  // Create order in DB (transaction) or in MemoryStore
+  // Create order in DB (one transaction that also takes the stock) or in MemoryStore
   let result: { id: string; orderNumber: number };
 
   if (db) {
-    result = await db.transaction(async (tx) => {
-      const [order] = await tx.insert(orders).values({
-        status: 'pending_payment',
-        email: email.toLowerCase(),
-        phone: typeof b.phone === 'string' ? b.phone : null,
+    const counted = q.lines.filter(l => l.counted);
+    await releaseExpiredOrders(db).catch(() => 0);   // give back stock held by long-unpaid online orders before checking availability
+    try {
+      const placed = await placeOrder(db, {
+        email, phone: typeof b.phone === 'string' ? b.phone : null,
         shippingAddress: {
-          recipientName: addr.recipientName,
-          line1: addr.line1,
-          line2: addr.line2 ?? null,
-          city: addr.city,
-          state: addr.state,
-          pincode: addr.pincode,
-          country: typeof addr.country === 'string' ? addr.country : 'India',
-          phone: typeof addr.phone === 'string' ? addr.phone : null,
+          recipientName: addr.recipientName as string, line1: addr.line1 as string, line2: typeof addr.line2 === 'string' ? addr.line2 : null,
+          city: addr.city as string, state: addr.state as string, pincode: addr.pincode as string,
+          country: typeof addr.country === 'string' ? addr.country : 'India', phone: typeof addr.phone === 'string' ? addr.phone : null,
         },
-        couponCode: q.coupon.ok ? q.coupon.code : null,
-        subtotalPaise: q.subtotalPaise,
-        discountPaise: q.discountPaise,
-        shippingPaise,
-        taxPaise,
-        totalPaise,
-        idempotencyKey: idempotencyKey ?? null,
-        userId: session?.sub ?? null,
-        paymentMethod,
-      }).returning();
-
-      if (!order) throw new Error('Failed to create order.');
-
-      // Insert line items (only counted lines)
-      const lines = q.lines.filter(l => l.counted);
-      if (lines.length > 0) {
-        await tx.insert(orderItems).values(lines.map(l => ({
-          orderId: order.id,
-          productId: l.productId,
-          nameSnapshot: l.name,
-          skuSnapshot: `${l.productId}${l.variant ? `-${l.variant}` : ''}`,
-          optionLabelSnapshot: l.variant ? 'Size' : null,
-          optionValueSnapshot: l.variant,
-          unitPricePaise: l.unitPricePaise,
-          qty: l.qty,
-          lineTotalPaise: l.lineTotalPaise,
-        })));
-      }
-
-      // First order event
-      await tx.insert(orderEvents).values({
-        orderId: order.id,
-        status: 'pending_payment',
-        note: paymentMethod === 'cod' ? 'Order placed (Cash on Delivery)' : 'Order placed, awaiting payment',
+        paymentMethod, couponCode: q.coupon.ok ? q.coupon.code : null,
+        lines: counted.map(l => ({ productId: l.productId, variant: l.variant, name: l.name, unitPricePaise: l.unitPricePaise, qty: l.qty, lineTotalPaise: l.lineTotalPaise })),
+        subtotalPaise: q.subtotalPaise, discountPaise: q.discountPaise, shippingPaise, taxPaise, totalPaise,
+        idempotencyKey, userId: session?.sub ?? null,
       });
-
-      return order;
-    });
+      if (placed.alreadyExists) return NextResponse.json({ orderId: placed.id, orderNumber: placed.orderNumber, alreadyExists: true }, { headers: noStore });
+      result = placed;
+    } catch (e) {
+      if (e instanceof OutOfStockError || e instanceof CouponUsedUpError) return fail(409, e.message);
+      throw e;
+    }
   } else {
     const newOrderId = `aur-ord-${crypto.randomUUID()}`;
     const newOrderNum = memoryStore.nextOrderNumber++;

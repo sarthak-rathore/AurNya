@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { getSessionUser } from '@/lib/auth';
 import { getDb } from '@/db/client';
 import { orders, orderItems, orderEvents } from '@/db/schema';
-import { eq, and } from 'drizzle-orm';
+import { eq } from 'drizzle-orm';
 import { memoryStore } from '@/db/memory-store';
 
 const noStore = { 'Cache-Control': 'no-store' };
@@ -53,28 +53,5 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
   return NextResponse.json({ order, items, events }, { headers: noStore });
 }
 
-/** PATCH: update order status (Phase 6 admin use; for now, allows confirming COD payment) */
-export async function PATCH(req: Request, { params }: { params: Promise<{ id: string }> }) {
-  const { id } = await params;
-  const db = getDb();
-  if (!db) return NextResponse.json({ error: 'Database not available.' }, { status: 503 });
-
-  const session = await getSessionUser();
-  if (!session) return NextResponse.json({ error: 'Unauthorized.' }, { status: 401 });
-
-  let body: unknown;
-  try { body = await req.json(); } catch { return NextResponse.json({ error: 'Invalid JSON.' }, { status: 400 }); }
-  const b = body as Record<string, unknown>;
-
-  // For now only payment confirmation is exposed (Razorpay verify calls this)
-  if (typeof b.paymentId !== 'string') {
-    return NextResponse.json({ error: 'paymentId required.' }, { status: 400 });
-  }
-
-  await db.transaction(async (tx) => {
-    await tx.update(orders).set({ paymentId: b.paymentId as string, status: 'paid', updatedAt: new Date() }).where(and(eq(orders.id, id), eq(orders.userId, session.sub)));
-    await tx.insert(orderEvents).values({ orderId: id, status: 'paid', note: `Payment received (${b.paymentId})` });
-  });
-
-  return NextResponse.json({ ok: true }, { headers: noStore });
-}
+// There is deliberately no PATCH here. Order status changes (including "paid") are made only by the payment check, the payment webhook,
+// or the signed-in admin dashboard (/api/admin/orders/[id]). A customer must never be able to mark their own order as paid.

@@ -30,6 +30,8 @@ export interface OrderEmailData {
   estimatedDelivery: { from: string; to: string };
 }
 
+const esc = (v: string | null | undefined): string => String(v ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+
 function fmt(paise: number) {
   return `₹${(paise / 100).toLocaleString('en-IN', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`;
 }
@@ -38,7 +40,7 @@ function buildOrderConfirmationHtml(data: OrderEmailData): string {
   const itemsHtml = data.items.map(item => `
     <tr>
       <td style="padding:8px 0;border-bottom:1px solid #f0ede8">
-        ${item.name}${item.optionValue ? ` · Size ${item.optionValue}` : ''} × ${item.qty}
+        ${esc(item.name)}${item.optionValue ? ` · Size ${esc(item.optionValue)}` : ''} × ${item.qty}
       </td>
       <td style="padding:8px 0;border-bottom:1px solid #f0ede8;text-align:right">
         ${fmt(item.unitPricePaise * item.qty)}
@@ -47,10 +49,10 @@ function buildOrderConfirmationHtml(data: OrderEmailData): string {
   `).join('');
 
   const addrHtml = data.shippingAddress ? `
-    <p style="margin:0">${data.shippingAddress.recipientName}</p>
-    <p style="margin:0">${data.shippingAddress.line1}${data.shippingAddress.line2 ? `, ${data.shippingAddress.line2}` : ''}</p>
-    <p style="margin:0">${data.shippingAddress.city}, ${data.shippingAddress.state} ${data.shippingAddress.pincode}</p>
-    <p style="margin:0">${data.shippingAddress.country}</p>
+    <p style="margin:0">${esc(data.shippingAddress.recipientName)}</p>
+    <p style="margin:0">${esc(data.shippingAddress.line1)}${data.shippingAddress.line2 ? `, ${esc(data.shippingAddress.line2)}` : ''}</p>
+    <p style="margin:0">${esc(data.shippingAddress.city)}, ${esc(data.shippingAddress.state)} ${esc(data.shippingAddress.pincode)}</p>
+    <p style="margin:0">${esc(data.shippingAddress.country)}</p>
   ` : '<p>To be confirmed</p>';
 
   return `<!DOCTYPE html>
@@ -142,7 +144,9 @@ export async function sendOrderConfirmation(data: OrderEmailData): Promise<void>
   }
 }
 
-export async function sendOrderStatusUpdate(to: string, orderNumber: number, status: string): Promise<void> {
+export interface StatusEmailExtra { courier?: string | null; trackingNumber?: string | null; trackingUrl?: string | null; note?: string | null }
+
+export async function sendOrderStatusUpdate(to: string, orderNumber: number, status: string, extra: StatusEmailExtra = {}, orderId?: string): Promise<void> {
   const apiKey = process.env.RESEND_API_KEY;
   if (!apiKey) {
     console.log(`[email] Status update for #${orderNumber} (${status}) → ${to} (no RESEND_API_KEY, skipping)`);
@@ -159,6 +163,10 @@ export async function sendOrderStatusUpdate(to: string, orderNumber: number, sta
   };
 
   const label = statusLabels[status] ?? `Order update: ${status}`;
+  const site = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://aurnya.com';
+  const tracking = status === 'shipped' && (extra.courier || extra.trackingNumber)
+    ? `<p>Courier: <strong>${esc(extra.courier)}</strong>${extra.trackingNumber ? `<br>Tracking number: <strong>${esc(extra.trackingNumber)}</strong>` : ''}${extra.trackingUrl ? `<br><a href="${esc(extra.trackingUrl)}">Track your parcel</a>` : ''}</p>` : '';
+  const link = orderId ? `<p><a href="${esc(site)}/order/${esc(orderId)}">View your order</a></p>` : '';
 
   try {
     await fetch('https://api.resend.com/emails', {
@@ -168,7 +176,7 @@ export async function sendOrderStatusUpdate(to: string, orderNumber: number, sta
         from: FROM,
         to,
         subject: `${label} — AurNya Order #${orderNumber}`,
-        html: `<p>Hi,</p><p>${label} for your AurNya order #${orderNumber}.</p><p>The AurNya Team</p>`,
+        html: `<p>Hi,</p><p>${esc(label)} for your AurNya order #${orderNumber}.</p>${tracking}${link}<p>The AurNya Team</p>`,
       }),
     });
   } catch (err) {

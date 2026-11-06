@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { createHmac } from 'node:crypto';
+import { createHmac, timingSafeEqual } from 'node:crypto';
 import { getDb } from '@/db/client';
 import { orders, orderEvents } from '@/db/schema';
 import { eq } from 'drizzle-orm';
@@ -39,13 +39,26 @@ export async function POST(req: Request) {
     .update(`${razorpayOrderId}|${razorpayPaymentId}`)
     .digest('hex');
 
-  if (expectedSig !== razorpaySignature) {
+  const a = Buffer.from(expectedSig); const b = Buffer.from(String(razorpaySignature));
+  if (a.length !== b.length || !timingSafeEqual(a, b)) {
     console.error('[razorpay] Signature mismatch for order', orderId);
     return NextResponse.json({ error: 'Payment verification failed.' }, { status: 400, headers: noStore });
   }
 
   const db = getDb();
   if (!db) return NextResponse.json({ error: 'Database not available.' }, { status: 503 });
+
+  // The signed payment must belong to THIS order. Without this check, a small valid payment could be used to mark any other order as paid.
+  const [current] = await db.select().from(orders).where(eq(orders.id, orderId)).limit(1);
+  if (!current || current.razorpayOrderId !== razorpayOrderId) {
+    console.error('[razorpay] payment does not belong to order', orderId);
+    return NextResponse.json({ error: 'Payment verification failed.' }, { status: 400, headers: noStore });
+  }
+  if (current.status !== 'pending_payment') {
+    // Already paid (for example the webhook got there first): that is success. Anything else needs a human.
+    if (current.status === 'paid') return NextResponse.json({ ok: true, orderId }, { headers: noStore });
+    return NextResponse.json({ error: 'This order is no longer open for payment. Please contact us with your payment reference.' }, { status: 409, headers: noStore });
+  }
 
   // Update order
   await db.transaction(async (tx) => {
@@ -67,7 +80,7 @@ export async function POST(req: Request) {
   const [order] = await db.select({ email: orders.email, orderNumber: orders.orderNumber })
     .from(orders).where(eq(orders.id, orderId)).limit(1);
   if (order) {
-    sendOrderStatusUpdate(order.email, order.orderNumber, 'paid').catch(console.error);
+    sendOrderStatusUpdate(order.email, order.orderNumber, 'paid', {}, orderId).catch(console.error);
   }
 
   return NextResponse.json({ ok: true, orderId }, { headers: noStore });
