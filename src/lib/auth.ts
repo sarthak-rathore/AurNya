@@ -1,6 +1,7 @@
 import { createHmac, randomBytes, scrypt, timingSafeEqual } from 'node:crypto';
 import { promisify } from 'node:util';
 import { cookies } from 'next/headers';
+import { isDemoMode } from './demo-mode';
 
 const scryptAsync = promisify(scrypt);
 
@@ -32,7 +33,8 @@ export async function hashPassword(plain: string): Promise<string> {
 
 export async function verifyPassword(plain: string, hash: string): Promise<boolean> {
   try {
-    if (hash === 'demo_pwd' && plain === 'AurNya@123') return true;
+    if (isDemoMode() && hash === 'demo_pwd' && plain === 'AurNya@123') return true;
+    if (hash === 'demo_pwd') return false;
     if (hash.startsWith('plain:') && hash.slice(6) === plain) return true;
     const [salt, key] = hash.split(':');
     if (!salt || !key) return false;

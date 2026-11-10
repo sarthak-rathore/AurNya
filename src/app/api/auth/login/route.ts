@@ -1,4 +1,5 @@
-import { NextResponse } from 'next/server';
+import { after, NextResponse } from 'next/server';
+import { onCustomerSignIn } from '@/lib/whatsapp';
 import { z } from 'zod';
 import { verifyPassword, signToken, SESSION_COOKIE } from '@/lib/auth';
 import { getUserByEmail, syncWishlist } from '@/db/accounts';
@@ -22,6 +23,7 @@ export async function POST(req: Request) {
     const token = await signToken({ sub: user.id, email: user.email });
     const res = NextResponse.json({ user: { id: user.id, email: user.email, firstName: user.firstName, lastName: user.lastName } });
     res.cookies.set(SESSION_COOKIE, token, { httpOnly: true, sameSite: 'lax', path: '/', maxAge: 60 * 60 * 24 * 30 });
+    after(() => onCustomerSignIn(user.id).catch((e) => console.error('[whatsapp] sign-in', e)));   // subscribe + welcome, after the response is sent
     return res;
   } catch (err) {
     if (err instanceof z.ZodError) return NextResponse.json({ error: err.issues[0]?.message ?? 'Invalid input' }, { status: 400 });

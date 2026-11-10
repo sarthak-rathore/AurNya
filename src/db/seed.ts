@@ -1,4 +1,4 @@
-import { and, eq, sql } from 'drizzle-orm';
+import { and, eq, inArray, sql } from 'drizzle-orm';
 import { site } from '@/config/site';
 import { products as demoProducts } from '@/data/products';
 import { DEMO_COUPON } from '@/lib/coupons';
@@ -53,12 +53,21 @@ export async function seedDemo(db: Db, opts: { force?: boolean } = {}): Promise<
   });
 }
 
-/** Deletes every sample product and sample coupon (and their sizes, pictures and collection links). Your own rows are not touched. */
-export async function purgeDemo(db: Db): Promise<{ products: number; coupons: number }> {
+/** Deletes every sample product, sample coupon, sample user and their sample orders. Your own rows are not touched. */
+export async function purgeDemo(db: Db): Promise<{ products: number; coupons: number; users: number; orders: number }> {
   return db.transaction(async (tx) => {
+    const demoUsers = await tx.select({ id: users.id }).from(users).where(eq(users.isDemo, true));
+    const userIds = demoUsers.map((u) => u.id);
+    let ordersCount = 0;
+    if (userIds.length > 0) {
+      const o = await tx.delete(orders).where(inArray(orders.userId, userIds)).returning({ id: orders.id });
+      ordersCount = o.length;
+      await tx.delete(userAddresses).where(inArray(userAddresses.userId, userIds));
+    }
+    const u = await tx.delete(users).where(eq(users.isDemo, true)).returning({ id: users.id });
     const p = await tx.delete(products).where(eq(products.isDemo, true)).returning({ id: products.id });
     const c = await tx.delete(coupons).where(and(eq(coupons.isDemo, true))).returning({ id: coupons.id });
-    return { products: p.length, coupons: c.length };
+    return { products: p.length, coupons: c.length, users: u.length, orders: ordersCount };
   });
 }
 

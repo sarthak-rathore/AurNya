@@ -10,6 +10,7 @@ import { ShowcaseArt, type ArtKind } from '@/components/showcase-art';
 import { social } from '@/lib/env';
 import { getHeroImages } from '@/lib/get-hero-images';
 import { NewsletterForm } from '@/components/newsletter-form';
+import { isDemoMode } from '@/lib/demo-mode';
 
 const eyebrow = 'mb-3 text-xs uppercase tracking-[.22em] text-gold-ink';
 const btn = 'inline-block rounded-full px-8 py-3 text-xs uppercase tracking-[.14em] transition hover:-translate-y-0.5';
@@ -42,6 +43,7 @@ const promises = [
 export const revalidate = 60;   // picks up catalogue edits within a minute
 export default async function Home() {
   const [all, fresh, heroImgs] = await Promise.all([catalog.all(), catalog.featured('new'), getHeroImages()]);
+  const showingDemo = isDemoMode() && all.some((p) => p.sku.startsWith('DEMO-') || p.id <= 10);
   const arts: ArtKind[] = ['Necklaces', 'Rings', 'Earrings', 'Bracelets'];
 
   // Helper: pick the right demo image for a collection slug
@@ -91,7 +93,7 @@ export default async function Home() {
           <ShowcaseArt kind={arts[i]} uid={`cat-${c}`} className="mx-auto w-4/5 transition duration-500 group-hover:scale-105" /><span className="mt-2 block font-serif text-2xl md:text-3xl">{c}</span><span className="text-xs uppercase tracking-[.14em] text-gold-ink">Shop now →</span></Link>))}</div></Section>
       <Section title="Shop by budget" sub="Pieces for every pocket" tint><div className="grid grid-cols-2 gap-4 md:grid-cols-4 md:gap-6">{budgets.map((b) => (
         <Link key={b.price} href={`/shop?price=${b.price}`} className="group rounded-3xl border border-charcoal/10 bg-ivory px-6 py-8 text-center transition duration-300 hover:-translate-y-1 hover:border-gold hover:shadow-xl hover:shadow-shade/15"><span className="block font-serif text-3xl md:text-4xl">{b.label}</span><span className="mt-2 inline-block text-xs uppercase tracking-[.14em] text-gold-ink group-hover:underline">Shop now →</span></Link>))}</div></Section>
-      <Section title="Everyday favourites" sub="Sample picks (demo data)" action={<ViewAll href="/shop" label="View all" />}><Rail label="Everyday favourites" items={all.map((p) => <ProductCard key={p.id} product={p} />)} /></Section>
+      <Section title="Everyday favourites" sub={showingDemo ? 'Sample picks (demo data)' : 'Our picks for you'} action={<ViewAll href="/shop" label="View all" />}><Rail label="Everyday favourites" items={all.slice(0, 12).map((p) => <ProductCard key={p.id} product={p} />)} /></Section>
       <section className="pb-16 md:pb-20"><Reveal className="mx-auto max-w-7xl px-6"><h2 className="sr-only">Featured</h2><div className="grid gap-5 md:grid-cols-2">
         {/* The Gift Edit promo card — uses real photo instead of packaging.jpg */}
         <Link href="/collection/gifts" className="group relative isolate flex min-h-[340px] items-end overflow-hidden rounded-3xl p-8 md:p-10">
@@ -122,7 +124,7 @@ export default async function Home() {
           </Link>
         );
       })}</div></Section>
-      <Section title="New arrivals" sub="Just in (demo data)" action={<ViewAll href="/shop?tag=new" label="See all new" />}><ProductGrid items={fresh} /></Section>
+      <Section title="New arrivals" sub={showingDemo ? 'Just in (demo data)' : 'Just in'} action={<ViewAll href="/shop?tag=new" label="See all new" />}><ProductGrid items={fresh} /></Section>
       <section className="bg-cream py-16 md:py-20"><Reveal className="mx-auto grid max-w-7xl items-center gap-14 px-6 md:grid-cols-[1.1fr_1fr]">
         <Image src="/images/packaging.jpg" alt="AurNya packaging: green box, lavender pouch and care cards" width={1200} height={800} className="rounded-3xl shadow-2xl shadow-plum/30" />
         <div><p className={eyebrow}>Our story</p><h2 className="font-serif text-5xl">{site.motto}.</h2><p className="my-5 max-w-md">AurNya, by Shagun Tomar, is jewellery that follows you, not the other way round. Light, modern and made for the way you really dress, from class to celebration.</p><Link href="/about" className={solid}>Read our story</Link></div></Reveal></section>

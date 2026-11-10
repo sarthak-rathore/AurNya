@@ -3,6 +3,7 @@ import { PAGE_SIZE, type CatalogService } from '@/lib/catalog-types';
 import type { Category, Product, Tag } from '@/lib/types';
 import type { Db } from './client';
 import { categories, collections, productCollections, productImages, products, productVariants } from './schema';
+import { isDemoMode } from '@/lib/demo-mode';
 
 // Total available: the sum of the per-size stock when a product has sizes, otherwise the product's own stock.
 const stockTotal = sql<number>`coalesce((select sum(${productVariants.stock})::int from ${productVariants} where ${productVariants.productId} = ${products.id}), ${products.stock})`;
@@ -19,7 +20,7 @@ type Row = { [K in keyof typeof columns]: unknown } & { id: number; slug: string
 
 export function createDbCatalog(db: Db): CatalogService {
   const base = () => db.select(columns).from(products).innerJoin(categories, eq(products.categoryId, categories.id));
-  const live = eq(products.status, 'active');
+  const live = isDemoMode() ? eq(products.status, 'active') : and(eq(products.status, 'active'), eq(products.isDemo, false));
 
   /** Turns database rows into Product objects, fetching sizes, collections and pictures for all of them in three queries. */
   async function hydrate(rows: Row[]): Promise<Product[]> {

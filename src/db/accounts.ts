@@ -2,6 +2,7 @@ import { eq, and } from 'drizzle-orm';
 import { users, userAddresses, userWishlist } from './schema';
 import { getDb } from './client';
 import { memoryStore } from './memory-store';
+import { isDemoMode } from '@/lib/demo-mode';
 
 export type UserRow = typeof users.$inferSelect;
 export type AddressRow = typeof userAddresses.$inferSelect;
@@ -11,8 +12,15 @@ export async function getUserByEmail(email: string): Promise<UserRow | null> {
   const db = getDb();
   if (db) {
     const rows = await db.select().from(users).where(eq(users.email, normEmail)).limit(1);
-    if (rows[0]) return rows[0];
+    if (rows[0]) {
+      // In production mode, ignore any demo user seeded previously
+      if (!isDemoMode() && rows[0].isDemo) return null;
+      return rows[0];
+    }
+    // When real DB is connected, never fall back to memoryStore unless in demo mode
+    if (!isDemoMode()) return null;
   }
+  if (!isDemoMode()) return null;
   // Check memory store (allows demo login without a running postgres db)
   const mem = memoryStore.users.find(u => u.email.toLowerCase() === normEmail);
   return (mem as unknown as UserRow) ?? null;
@@ -22,8 +30,13 @@ export async function getUserById(id: string): Promise<UserRow | null> {
   const db = getDb();
   if (db) {
     const rows = await db.select().from(users).where(eq(users.id, id)).limit(1);
-    if (rows[0]) return rows[0];
+    if (rows[0]) {
+      if (!isDemoMode() && rows[0].isDemo) return null;
+      return rows[0];
+    }
+    if (!isDemoMode()) return null;
   }
+  if (!isDemoMode()) return null;
   const mem = memoryStore.users.find(u => u.id === id);
   return (mem as unknown as UserRow) ?? null;
 }

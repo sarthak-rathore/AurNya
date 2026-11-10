@@ -6,6 +6,7 @@ import { ProductGrid } from './product-card';
 import { ShowcaseArt, type ArtKind } from './showcase-art';
 import { JsonLd } from './json-ld';
 import { siteUrl } from '@/lib/env';
+import { isDemoMode } from '@/lib/demo-mode';
 
 const PRICES = [['', 'Any price'], ...budgets.map((b) => [b.price, b.label])];
 const SORTS = [['', 'Featured'], ['newest', 'Newest'], ['price-asc', 'Price: low to high'], ['price-desc', 'Price: high to low']];
@@ -16,7 +17,7 @@ export async function ShopView({ title, basePath, query, crumb }: { title: strin
   const page = Math.max(1, query.page ?? 1);
   const col = site.collections.find((c) => c.slug === query.collection);
   const artKind: ArtKind = (query.category as ArtKind) || (query.collection === 'gifts' ? 'Gift' : query.collection === 'statement' ? 'Necklaces' : query.collection ? 'Earrings' : query.tag === 'new' ? 'Rings' : 'Necklaces');
-  const blurb = col ? col.blurb : query.category ? `Browse ${query.category.toLowerCase()} from AurNya.` : query.tag === 'new' ? 'Just in. Sample picks while we get ready.' : query.tag === 'bestseller' ? 'Sample picks while we get ready.' : query.q ? 'Everything that matches your search.' : 'Every piece, in one place.';
+  const blurb = col ? col.blurb : query.category ? `Browse ${query.category.toLowerCase()} from AurNya.` : query.tag === 'new' ? (isDemoMode() ? 'Just in. Sample picks while we get ready.' : 'Explore our newest arrivals.') : query.tag === 'bestseller' ? (isDemoMode() ? 'Sample picks while we get ready.' : 'Our most loved pieces.') : query.q ? 'Everything that matches your search.' : 'Every piece, in one place.';
   const more = new URLSearchParams(); (['q', 'category', 'collection', 'tag', 'price', 'stock', 'sort'] as const).forEach((k) => query[k] && more.set(k, String(query[k]))); more.set('page', String(page + 1));
   return (
     <div className="mx-auto max-w-7xl px-6 pb-20 pt-8">

@@ -37,6 +37,10 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: 'Order is already paid or cancelled.' }, { status: 409, headers: noStore });
   }
 
+  if (order.paymentMethod !== 'razorpay') return NextResponse.json({ error: 'This order is not an online-payment order.' }, { status: 409, headers: noStore });
+  // Paying twice (a retry, a second tab) must reuse the same Razorpay order, or a payment could land on an order we no longer track.
+  if (order.razorpayOrderId) return NextResponse.json({ razorpayOrderId: order.razorpayOrderId, amount: order.totalPaise, currency: 'INR', keyId }, { headers: noStore });
+
   // Create Razorpay order via REST API
   const credentials = Buffer.from(`${keyId}:${keySecret}`).toString('base64');
   const rzpRes = await fetch('https://api.razorpay.com/v1/orders', {

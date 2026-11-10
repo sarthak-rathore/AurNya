@@ -1,5 +1,5 @@
 'use client';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useAuth } from '@/store/auth-context';
 import { useShop } from '@/store/shop-context';
@@ -63,6 +63,39 @@ const Icons = {
   ring: () => <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="1.8"><circle cx="12" cy="14" r="7"/><path d="M9 4h6l2 3H7l2-3z"/></svg>,
 };
 
+/** Customer's WhatsApp updates switch (order updates, sale alerts, exclusive offers). */
+function WhatsappToggle({ phone }: { phone: string }) {
+  const [state, setState] = useState<{ subscribed: boolean; hasPhone: boolean } | null>(null);
+  const [busy, setBusy] = useState(false); const [msg, setMsg] = useState('');
+  useEffect(() => { let on = true; fetch('/api/account/whatsapp', { cache: 'no-store' }).then((r) => (r.ok ? r.json() : null)).then((d) => { if (on && d) setState(d); }).catch(() => {}); return () => { on = false; }; }, [phone]);
+  async function flip() {
+    if (!state) return; setBusy(true); setMsg('');
+    try {
+      const r = await fetch('/api/account/whatsapp', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ subscribe: !state.subscribed }) });
+      const d = await r.json().catch(() => ({}));
+      if (r.ok) setState({ ...state, subscribed: !state.subscribed }); else setMsg(d.error ?? 'Could not change this. Please try again.');
+    } finally { setBusy(false); }
+  }
+  if (!state) return null;
+  return (
+    <div className="rounded-lg border border-[#ecdcd5] bg-[#fbf6f3] p-4">
+      <div className="flex items-center justify-between gap-4">
+        <div>
+          <p className="text-sm font-medium text-[#1f1a24]">WhatsApp updates</p>
+          <p className="text-xs text-[#6b6070] mt-0.5">Order updates, sale alerts and exclusive offers on your saved mobile number. Reply STOP on WhatsApp anytime to unsubscribe.</p>
+        </div>
+        <button type="button" role="switch" aria-checked={state.subscribed} disabled={busy} onClick={flip}
+          className={`relative inline-flex h-6 w-11 shrink-0 rounded-full transition-colors ${state.subscribed ? 'bg-[#832729]' : 'bg-[#d6c7bf]'} disabled:opacity-60`}>
+          <span className={`inline-block h-5 w-5 rounded-full bg-white shadow transition mt-0.5 ${state.subscribed ? 'translate-x-5' : 'translate-x-0.5'}`} />
+          <span className="sr-only">WhatsApp updates</span>
+        </button>
+      </div>
+      {!state.hasPhone && <p className="mt-2 text-xs text-[#832729]">Add and save your mobile number above to receive WhatsApp updates.</p>}
+      {msg && <p className="mt-2 text-xs text-[#832729]">{msg}</p>}
+    </div>
+  );
+}
+
 export function AccountClient({ user, addresses, orders }: Props) {
   const { logout } = useAuth();
   const { wishlist } = useShop();
@@ -72,7 +105,8 @@ export function AccountClient({ user, addresses, orders }: Props) {
   const [isEditingProfile, setIsEditingProfile] = useState(false);
   const [firstName, setFirstName] = useState(user.firstName);
   const [lastName, setLastName] = useState(user.lastName);
-  const [phone, setPhone] = useState(user.phone ?? '+91 9525509617');
+  const [phone, setPhone] = useState(user.phone ?? '')
+  const [profilePhoneSaved, setProfilePhoneSaved] = useState(user.phone ?? '');
   const [dob, setDob] = useState('14 Aug 1998');
   const [anniversary, setAnniversary] = useState('—');
   const [coins] = useState(250); // AurNya Coins rewards
@@ -103,6 +137,7 @@ export function AccountClient({ user, addresses, orders }: Props) {
       body: JSON.stringify({ firstName, lastName, phone }),
     });
     setProfileMsg(res.ok ? '✓ Details saved successfully' : 'Failed to save');
+    if (res.ok) setProfilePhoneSaved(phone);
     if (res.ok) {
       setTimeout(() => {
         setIsEditingProfile(false);
@@ -476,8 +511,9 @@ export function AccountClient({ user, addresses, orders }: Props) {
                     </div>
                     <div>
                       <label className="block text-xs uppercase font-medium text-[#6b6070] mb-1">Phone</label>
-                      <input value={phone} onChange={e => setPhone(e.target.value)} type="tel" className="w-full rounded-lg border border-[#d6c7bf] bg-white text-[#1f1a24] px-4 py-2.5 text-sm focus:border-[#832729] focus:outline-none" />
+                      <input value={phone} onChange={e => setPhone(e.target.value)} type="tel" placeholder="98765 43210" className="w-full rounded-lg border border-[#d6c7bf] bg-white text-[#1f1a24] px-4 py-2.5 text-sm focus:border-[#832729] focus:outline-none" />
                     </div>
+                    <WhatsappToggle phone={profilePhoneSaved} />
                     <button type="submit" className="rounded-full bg-[#832729] px-7 py-2.5 text-xs uppercase font-semibold tracking-wider text-white hover:bg-black shadow">
                       Save Profile
                     </button>

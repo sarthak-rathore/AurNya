@@ -9,7 +9,7 @@ import { boolean, check, index, integer, jsonb, pgEnum, pgTable, primaryKey, ser
  *  - Stock is per variant when a product has variants (ring sizes), otherwise on the product itself.
  *  - Rows marked is_demo are sample data from the seed. `npm run db:purge-demo` removes them in one go.
  *  - Order items copy (snapshot) the product name, SKU, size and price at purchase time, so later edits never rewrite history.
- *  - Tables for accounts arrive in Phase 4; payments and shipping tables in Phase 5.
+ *  - Tables for accounts arrived in Phase 4, payments and shipping in Phase 5, and the admin audit log in Phase 6.
  */
 
 const stamp = (name: string) => timestamp(name, { withTimezone: true }).notNull().defaultNow();
@@ -122,7 +122,7 @@ export const coupons = pgTable('coupons', {
   check('coupons_dates_ordered', sql`${t.startsAt} is null or ${t.endsAt} is null or ${t.endsAt} > ${t.startsAt}`),
 ]);
 
-/** Small key/value store for store settings such as the announcement bar. Phase 6 edits these from the admin dashboard. */
+/** Small key/value store for store settings (announcement bar, home page pictures). The admin dashboard edits these. */
 export const settings = pgTable('settings', {
   key: text('key').primaryKey(),
   value: jsonb('value').notNull(),
@@ -152,6 +152,15 @@ export const orders = pgTable('orders', {
   paymentMethod: text('payment_method').notNull().default('razorpay'),
   paymentId: text('payment_id'),
   razorpayOrderId: text('razorpay_order_id'),
+  /** Phase 6: fulfilment details the owner fills in when an order ships. */
+  courier: text('courier'),
+  trackingNumber: text('tracking_number'),
+  trackingUrl: text('tracking_url'),
+  /** Phase 6: private note, never shown to the customer. */
+  adminNote: text('admin_note'),
+  /** Phase 6: true while this order is holding stock / a coupon use. Set at checkout, cleared when the order is cancelled or expires, so stock is given back exactly once. */
+  stockHeld: boolean('stock_held').notNull().default(false),
+  couponCounted: boolean('coupon_counted').notNull().default(false),
   createdAt: stamp('created_at'),
   updatedAt: stamp('updated_at'),
 }, (t) => [
@@ -199,6 +208,9 @@ export const users = pgTable('users', {
   firstName: text('first_name').notNull().default(''),
   lastName: text('last_name').notNull().default(''),
   phone: text('phone'),
+  /** Phase 7: WhatsApp updates. Opted in the first time the customer signs in with a phone number; STOP / the account toggle opts out and is always respected. */
+  whatsappOptInAt: timestamp('whatsapp_opt_in_at', { withTimezone: true }),
+  whatsappOptedOutAt: timestamp('whatsapp_opted_out_at', { withTimezone: true }),
   isVerified: boolean('is_verified').notNull().default(false),
   isDemo: boolean('is_demo').notNull().default(false),
   createdAt: stamp('created_at'),
@@ -227,3 +239,72 @@ export const userWishlist = pgTable('user_wishlist', {
   productId: integer('product_id').notNull().references(() => products.id, { onDelete: 'cascade' }),
   addedAt: stamp('added_at'),
 }, (t) => [primaryKey({ columns: [t.userId, t.productId] })]);
+
+// ---- Phase 6: Admin dashboard ----
+
+/** One row for every change made from the admin dashboard: who, what and when. Read-only history. */
+export const adminAudit = pgTable('admin_audit', {
+  id: serial('id').primaryKey(),
+  actor: text('actor').notNull(),
+  action: text('action').notNull(),
+  entity: text('entity').notNull(),
+  entityId: text('entity_id'),
+  summary: text('summary').notNull().default(''),
+  createdAt: stamp('created_at'),
+}, (t) => [index('admin_audit_created_idx').on(t.createdAt)]);
+
+// ---- Phase 7: owner approvals and WhatsApp ----
+
+export const changeStatus = pgEnum('change_status', ['pending', 'approved', 'rejected', 'failed']);
+
+/**
+ * A change an admin or manager asked for. Nothing in it has happened yet: the owner approves it (the saved request is then replayed
+ * as the owner) or rejects it. `body` is exactly what the screen sent, so approving applies exactly what was asked for.
+ */
+export const changeRequests = pgTable('change_requests', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  actorEmail: text('actor_email').notNull(),
+  actorRole: text('actor_role').notNull(),
+  method: text('method').notNull(),
+  path: text('path').notNull(),
+  body: jsonb('body'),
+  section: text('section').notNull().default('General'),
+  summary: text('summary').notNull().default(''),
+  /** Hash of who/what/where: a double click does not create two requests. */
+  fingerprint: text('fingerprint').notNull(),
+  status: changeStatus('status').notNull().default('pending'),
+  decidedBy: text('decided_by'),
+  decidedAt: timestamp('decided_at', { withTimezone: true }),
+  decisionNote: text('decision_note'),
+  resultMessage: text('result_message'),
+  createdAt: stamp('created_at'),
+}, (t) => [
+  index('change_requests_status_idx').on(t.status, t.createdAt),
+  index('change_requests_actor_idx').on(t.actorEmail),
+]);
+
+/** Every WhatsApp message the shop wants to send. A worker sends them; nothing is lost if WhatsApp is slow or down. */
+export const whatsappOutbox = pgTable('whatsapp_outbox', {
+  id: serial('id').primaryKey(),
+  userId: uuid('user_id').references(() => users.id, { onDelete: 'set null' }),
+  /** Digits only, with country code (for example 919876543210). */
+  phone: text('phone').notNull(),
+  kind: text('kind').notNull(),
+  /** Which approved WhatsApp template to use, and the values for its {{1}}, {{2}}... */
+  template: text('template').notNull(),
+  params: jsonb('params').notNull().default(sql`'[]'::jsonb`),
+  /** The full message as plain text (used by providers / modes that send text instead of a template). */
+  text: text('text').notNull(),
+  status: text('status').notNull().default('queued'),
+  attempts: integer('attempts').notNull().default(0),
+  error: text('error'),
+  providerMessageId: text('provider_message_id'),
+  /** Stops the same message going to the same person twice (for example the same offer). */
+  dedupeKey: text('dedupe_key').unique(),
+  createdAt: stamp('created_at'),
+  updatedAt: stamp('updated_at'),
+  sentAt: timestamp('sent_at', { withTimezone: true }),
+}, (t) => [
+  check('whatsapp_outbox_status_known', sql`${t.status} in ('queued','sending','sent','failed','skipped')`),
+  index('whatsapp_outbox_status_idx').on(t.status, t.id),
+]);

@@ -12,6 +12,7 @@ interface OrderRow {
   couponCode?: string | null;
   subtotalPaise: number; discountPaise: number; shippingPaise: number; taxPaise: number; totalPaise: number;
   paymentMethod: string; paymentId?: string | null;
+  courier?: string | null; trackingNumber?: string | null; trackingUrl?: string | null;
   createdAt: string;
 }
 interface OrderItem {
@@ -145,6 +146,16 @@ export function OrderClient({ orderId }: { orderId: string }) {
               <p className="text-sm font-medium">Estimated delivery: {delivery.from} – {delivery.to}</p>
               <p className="text-xs text-muted">3–7 business days after dispatch</p>
             </div>
+          </section>
+        )}
+
+        {/* Tracking (filled in by the store when the parcel ships) */}
+        {(order.courier || order.trackingNumber) && (
+          <section className="rounded-3xl border border-charcoal/10 bg-ivory p-6">
+            <h2 className="mb-3 font-serif text-2xl">Tracking</h2>
+            <p className="text-sm">Courier: <strong>{order.courier}</strong></p>
+            {order.trackingNumber && <p className="text-sm">Tracking number: <strong>{order.trackingNumber}</strong></p>}
+            {order.trackingUrl && /^https:\/\//i.test(order.trackingUrl) && <a href={order.trackingUrl} target="_blank" rel="noopener noreferrer" className="mt-3 inline-block rounded-full bg-charcoal px-6 py-2.5 text-xs uppercase tracking-widest text-ivory hover:bg-plum">Track your parcel</a>}
           </section>
         )}
 

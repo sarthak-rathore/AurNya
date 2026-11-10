@@ -11,6 +11,8 @@ export interface MemoryUser {
   firstName: string;
   lastName: string;
   phone: string | null;
+  whatsappOptInAt?: Date | null;
+  whatsappOptedOutAt?: Date | null;
   isVerified: boolean;
   isDemo: boolean;
   createdAt: Date;
@@ -307,3 +309,23 @@ if (!g.__aurnyaMemory) {
 }
 
 export const memoryStore = g.__aurnyaMemory;
+
+/**
+ * Phase 7 fallback state (owner approvals, WhatsApp outbox, dashboard section data) for when no PostgreSQL database is connected.
+ * Same idea as the store above: the demo works out of the box. With DATABASE_URL set, real tables are used instead.
+ */
+export interface MemoryChangeRequest {
+  id: string; actorEmail: string; actorRole: string; method: string; path: string; body: unknown;
+  section: string; summary: string; fingerprint: string; status: 'pending' | 'approved' | 'rejected' | 'failed';
+  decidedBy: string | null; decidedAt: Date | null; decisionNote: string | null; resultMessage: string | null; createdAt: Date;
+}
+export interface MemoryOutboxRow {
+  id: number; userId: string | null; phone: string; kind: string; template: string; params: string[]; text: string;
+  status: 'queued' | 'sending' | 'sent' | 'failed' | 'skipped'; attempts: number; error: string | null; providerMessageId: string | null;
+  dedupeKey: string | null; createdAt: Date; updatedAt: Date; sentAt: Date | null;
+}
+const gx = globalThis as unknown as {
+  __aurnyaExtra?: { requests: MemoryChangeRequest[]; outbox: MemoryOutboxRow[]; nextOutboxId: number; sections: Map<string, unknown> };
+};
+if (!gx.__aurnyaExtra) gx.__aurnyaExtra = { requests: [], outbox: [], nextOutboxId: 1, sections: new Map() };
+export const memoryExtra = gx.__aurnyaExtra;

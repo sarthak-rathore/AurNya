@@ -13,6 +13,7 @@ import { CartDrawer } from "@/components/cart-drawer";
 import { Footer } from "@/components/footer";
 import { RouteLoader } from "@/components/route-loader";
 import { JsonLd } from "@/components/json-ld";
+import { HideOnAdmin } from "@/components/hide-on-admin";
 
 // Fonts are bundled in src/fonts (Cormorant Garamond + Jost, both SIL Open Font License), so builds never need internet access to Google.
 const serif = localFont({
@@ -108,7 +109,7 @@ export default function RootLayout({
         <AuthProvider>
           <ShopProvider>
             <Suspense fallback={null}>
-              <RouteLoader />
+              <HideOnAdmin><RouteLoader /></HideOnAdmin>
 
               <a
                 href="#main"
@@ -118,15 +119,15 @@ export default function RootLayout({
               </a>
               {/* WRAP THE ANNOUNCEMENT BAR IN SUSPENSE */}
 
-              <AnnouncementBar />
+              <HideOnAdmin><AnnouncementBar /></HideOnAdmin>
 
-              <Header />
+              <HideOnAdmin><Header /></HideOnAdmin>
 
               <main id="main">{children}</main>
 
-              <Footer />
+              <HideOnAdmin><Footer /></HideOnAdmin>
 
-              <CartDrawer />
+              <HideOnAdmin><CartDrawer /></HideOnAdmin>
             </Suspense>
           </ShopProvider>
         </AuthProvider>

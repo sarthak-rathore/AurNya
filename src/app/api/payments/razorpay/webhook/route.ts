@@ -1,5 +1,6 @@
-import { NextResponse } from 'next/server';
-import { createHmac } from 'node:crypto';
+import { after, NextResponse } from 'next/server';
+import { queueOrderMessageById } from '@/lib/whatsapp';
+import { createHmac, timingSafeEqual } from 'node:crypto';
 import { getDb } from '@/db/client';
 import { orders, orderEvents } from '@/db/schema';
 import { eq } from 'drizzle-orm';
@@ -25,7 +26,8 @@ export async function POST(req: Request) {
   if (!signature) return new NextResponse('Missing signature', { status: 400 });
 
   const expectedSig = createHmac('sha256', webhookSecret).update(rawBody).digest('hex');
-  if (expectedSig !== signature) {
+  const ea = Buffer.from(expectedSig); const eb = Buffer.from(signature);
+  if (ea.length !== eb.length || !timingSafeEqual(ea, eb)) {
     console.error('[webhook] Razorpay signature mismatch');
     return new NextResponse('Invalid signature', { status: 400 });
   }
@@ -55,24 +57,37 @@ export async function POST(req: Request) {
 
   try {
     if (eventType === 'payment.captured' && order.status === 'pending_payment') {
-      await db.transaction(async (tx) => {
-        await tx.update(orders).set({ status: 'paid', paymentId: rzpPaymentId ?? null, updatedAt: new Date() }).where(eq(orders.id, order.id));
-        await tx.insert(orderEvents).values({ orderId: order.id, status: 'paid', note: `Webhook: payment captured. Payment ID: ${rzpPaymentId}` });
-      });
-      sendOrderStatusUpdate(order.email, order.orderNumber, 'paid').catch(console.error);
+      const amount = paymentEntity?.amount;
+      if (typeof amount === 'number' && amount !== order.totalPaise) {
+        // Never mark an order paid for the wrong amount. Leave a note for the owner instead.
+        await db.insert(orderEvents).values({ orderId: order.id, status: order.status, note: `Webhook: a payment of ${amount} paise arrived but the order total is ${order.totalPaise}. Please check in Razorpay.` });
+      } else {
+        await db.transaction(async (tx) => {
+          await tx.update(orders).set({ status: 'paid', paymentId: rzpPaymentId ?? null, updatedAt: new Date() }).where(eq(orders.id, order.id));
+          await tx.insert(orderEvents).values({ orderId: order.id, status: 'paid', note: `Webhook: payment captured. Payment ID: ${rzpPaymentId}` });
+        });
+        sendOrderStatusUpdate(order.email, order.orderNumber, 'paid', {}, order.id).catch(console.error);
+        after(() => queueOrderMessageById(order.id, 'paid'));
+      }
 
-    } else if (eventType === 'payment.failed') {
+    } else if (eventType === 'payment.captured' && order.status === 'cancelled' && !order.paymentId) {
+      // The customer paid after the order was released. Keep the payment reference so the dashboard can flag it for the owner.
       await db.transaction(async (tx) => {
-        await tx.update(orders).set({ status: 'cancelled', updatedAt: new Date() }).where(eq(orders.id, order.id));
-        await tx.insert(orderEvents).values({ orderId: order.id, status: 'cancelled', note: `Webhook: payment failed. Error: ${(paymentEntity?.error_description as string) ?? 'unknown'}` });
+        await tx.update(orders).set({ paymentId: rzpPaymentId ?? null, updatedAt: new Date() }).where(eq(orders.id, order.id));
+        await tx.insert(orderEvents).values({ orderId: order.id, status: 'cancelled', note: `Webhook: a payment (${rzpPaymentId}) arrived after this order was cancelled. Refund it in Razorpay, or place the order again for the customer.` });
       });
 
-    } else if (eventType === 'refund.processed') {
+    } else if (eventType === 'payment.failed' && order.status === 'pending_payment') {
+      // One failed attempt is not the end: the customer can try again on the same Razorpay order. Just note it. (Unpaid orders are released automatically after an hour.)
+      await db.insert(orderEvents).values({ orderId: order.id, status: 'pending_payment', note: `Payment attempt failed: ${(paymentEntity?.error_description as string) ?? 'unknown reason'}` });
+
+    } else if (eventType === 'refund.processed' && ['paid', 'packed', 'shipped', 'delivered', 'cancelled'].includes(order.status) && order.paymentId) {
       await db.transaction(async (tx) => {
         await tx.update(orders).set({ status: 'refunded', updatedAt: new Date() }).where(eq(orders.id, order.id));
         await tx.insert(orderEvents).values({ orderId: order.id, status: 'refunded', note: 'Webhook: refund processed.' });
       });
-      sendOrderStatusUpdate(order.email, order.orderNumber, 'refunded').catch(console.error);
+      sendOrderStatusUpdate(order.email, order.orderNumber, 'refunded', {}, order.id).catch(console.error);
+      after(() => queueOrderMessageById(order.id, 'refunded'));
     }
   } catch (err) {
     console.error('[webhook] DB error:', err);

@@ -11,7 +11,7 @@ AurNya is a luxury direct-to-consumer jewellery storefront built with **Next.js 
 - ✅ **Phase 3: Database** — PostgreSQL with Drizzle ORM, schema migrations, seeds, and catalog search.
 - ✅ **Phase 4: Accounts** — User authentication, JWT sessions, saved addresses, wishlist, and profile management.
 - ✅ **Phase 5: Checkout & Orders + Tanishq Luxury Experience** — Complete Checkout with Razorpay/COD, order tracking, webhook verification, PIN code checker, rotating logo loader, and Tanishq-style luxury account portal & plum footer.
-- ⏳ **Phase 6: Admin Dashboard** — In progress.
+- ✅ **Phase 6: Admin Dashboard** — Complete. Products, pictures, prices, stock, orders (status, tracking, refunds), coupons, banners and the announcement bar, all at `/admin`. See `README_PHASE_6_ADMIN.md`.
 - ⏳ **Phase 7: Polish & Launch** — 3D interactive Mol* views, performance tuning, and launch.
 
 ---
