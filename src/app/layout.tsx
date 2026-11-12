@@ -14,6 +14,7 @@ import { Footer } from "@/components/footer";
 import { RouteLoader } from "@/components/route-loader";
 import { JsonLd } from "@/components/json-ld";
 import { HideOnAdmin } from "@/components/hide-on-admin";
+import { MaintenanceGuard } from "@/components/maintenance-guard";
 
 // Fonts are bundled in src/fonts (Cormorant Garamond + Jost, both SIL Open Font License), so builds never need internet access to Google.
 const serif = localFont({
@@ -109,25 +110,27 @@ export default function RootLayout({
         <AuthProvider>
           <ShopProvider>
             <Suspense fallback={null}>
-              <HideOnAdmin><RouteLoader /></HideOnAdmin>
+              <MaintenanceGuard>
+                <HideOnAdmin><RouteLoader /></HideOnAdmin>
 
-              <a
-                href="#main"
-                className="sr-only focus:not-sr-only focus:fixed focus:left-2 focus:top-2 focus:z-[100] focus:bg-charcoal focus:px-4 focus:py-2 focus:text-ivory"
-              >
-                Skip to content
-              </a>
-              {/* WRAP THE ANNOUNCEMENT BAR IN SUSPENSE */}
+                <a
+                  href="#main"
+                  className="sr-only focus:not-sr-only focus:fixed focus:left-2 focus:top-2 focus:z-[100] focus:bg-charcoal focus:px-4 focus:py-2 focus:text-ivory"
+                >
+                  Skip to content
+                </a>
+                {/* WRAP THE ANNOUNCEMENT BAR IN SUSPENSE */}
 
-              <HideOnAdmin><AnnouncementBar /></HideOnAdmin>
+                <HideOnAdmin><AnnouncementBar /></HideOnAdmin>
 
-              <HideOnAdmin><Header /></HideOnAdmin>
+                <HideOnAdmin><Header /></HideOnAdmin>
 
-              <main id="main">{children}</main>
+                <main id="main">{children}</main>
 
-              <HideOnAdmin><Footer /></HideOnAdmin>
+                <HideOnAdmin><Footer /></HideOnAdmin>
 
-              <HideOnAdmin><CartDrawer /></HideOnAdmin>
+                <HideOnAdmin><CartDrawer /></HideOnAdmin>
+              </MaintenanceGuard>
             </Suspense>
           </ShopProvider>
         </AuthProvider>

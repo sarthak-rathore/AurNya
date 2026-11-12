@@ -13,6 +13,8 @@ import { calculateShipping } from '@/lib/shipping';
 import { sendOrderConfirmation } from '@/lib/email';
 import { estimatedDeliveryRange } from '@/lib/shipping';
 import { memoryStore } from '@/db/memory-store';
+import { readSection } from '@/db/sections';
+import { DEFAULT_STORE_CONTROLS, type StoreControls } from '@/lib/store-controls';
 
 const noStore = { 'Cache-Control': 'no-store' };
 const fail = (status: number, error: string) => NextResponse.json({ error }, { status, headers: noStore });
@@ -31,6 +33,12 @@ export async function POST(req: Request) {
   if (!parsed.ok) return fail(400, parsed.error);
 
   const paymentMethod = (b.paymentMethod === 'cod' ? 'cod' : 'razorpay') as 'cod' | 'razorpay';
+
+  // Enforce Store Controls set by Owner
+  const controls = await readSection<StoreControls>(db, 'store-controls', DEFAULT_STORE_CONTROLS);
+  if (!controls.orders) return fail(403, 'Order placement is currently paused by store management.');
+  if (paymentMethod === 'cod' && !controls.cod) return fail(400, 'Cash on Delivery is currently disabled.');
+  if (paymentMethod === 'razorpay' && !controls.onlinePay) return fail(400, 'Online payments are currently disabled.');
 
   // Shipping address validation
   const addr = b.shippingAddress as Record<string, unknown> | null | undefined;

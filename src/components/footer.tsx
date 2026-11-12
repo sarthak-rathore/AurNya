@@ -143,13 +143,13 @@ export function Footer() {
                 Useful Links
               </h3>
               <ul className="mt-4 space-y-2.5 text-[13px] text-[#d6c7e6]">
-                <li><Link href="/info/shipping" className="transition-colors hover:text-[#e4d2a8]">Delivery Information</Link></li>
-                <li><Link href="/info/shipping" className="transition-colors hover:text-[#e4d2a8]">International Shipping</Link></li>
-                <li><Link href="/checkout" className="transition-colors hover:text-[#e4d2a8]">Payment Options</Link></li>
-                <li><Link href="/account" className="transition-colors hover:text-[#e4d2a8]">Track your Order</Link></li>
-                <li><Link href="/info/returns" className="transition-colors hover:text-[#e4d2a8]">Returns &amp; Exchanges</Link></li>
-                <li><Link href="/about" className="transition-colors hover:text-[#e4d2a8]">Find a Boutique</Link></li>
-                <li><Link href="/info/privacy" className="transition-colors hover:text-[#e4d2a8]">Exercise Your Rights</Link></li>
+                <li><Link href="/info/delivery-information" className="transition-colors hover:text-[#e4d2a8]">Delivery Information</Link></li>
+                <li><Link href="/info/international-shipping" className="transition-colors hover:text-[#e4d2a8]">International Shipping</Link></li>
+                <li><Link href="/info/payment-options" className="transition-colors hover:text-[#e4d2a8]">Payment Options</Link></li>
+                <li><Link href="/info/track-your-order" className="transition-colors hover:text-[#e4d2a8]">Track your Order</Link></li>
+                <li><Link href="/info/returns-exchanges" className="transition-colors hover:text-[#e4d2a8]">Returns &amp; Exchanges</Link></li>
+                <li><Link href="/info/find-a-boutique" className="transition-colors hover:text-[#e4d2a8]">Find a Boutique</Link></li>
+                <li><Link href="/info/exercise-your-rights" className="transition-colors hover:text-[#e4d2a8]">Exercise Your Rights</Link></li>
               </ul>
             </div>
 
@@ -159,12 +159,12 @@ export function Footer() {
                 Information
               </h3>
               <ul className="mt-4 space-y-2.5 text-[13px] text-[#d6c7e6]">
-                <li><Link href="/about" className="transition-colors hover:text-[#e4d2a8]">Blog &amp; Stories</Link></li>
-                <li><Link href="/shop" className="transition-colors hover:text-[#e4d2a8]">Offers &amp; Contest Details</Link></li>
+                <li><Link href="/info/blog" className="transition-colors hover:text-[#e4d2a8]">Blog &amp; Stories</Link></li>
+                <li><Link href="/info/offers-contests" className="transition-colors hover:text-[#e4d2a8]">Offers &amp; Contest Details</Link></li>
                 <li><Link href="/info/faq" className="transition-colors hover:text-[#e4d2a8]">Help &amp; FAQs</Link></li>
                 <li><Link href="/about" className="transition-colors hover:text-[#e4d2a8]">About AurNya</Link></li>
-                <li><Link href="/info/privacy" className="transition-colors hover:text-[#e4d2a8]">Cookie Policy</Link></li>
-                <li><button type="button" onClick={() => alert('AurNya uses essential cookies to ensure secure checkout and personalised luxury browsing.')} className="text-left transition-colors hover:text-[#e4d2a8]">Cookie Settings</button></li>
+                <li><Link href="/info/cookie-policy" className="transition-colors hover:text-[#e4d2a8]">Cookie Policy</Link></li>
+                <li><Link href="/info/cookie-settings" className="transition-colors hover:text-[#e4d2a8]">Cookie Settings</Link></li>
               </ul>
             </div>
 
@@ -366,16 +366,16 @@ export function Footer() {
             </p>
 
             <div className="flex flex-wrap items-center gap-x-5 gap-y-2">
-              <Link href="/info/privacy" className="transition-colors hover:text-[#e4d2a8]">
+              <Link href="/info/cyber-security-policy" className="transition-colors hover:text-[#e4d2a8]">
                 Cyber Security Policy
               </Link>
-              <Link href="/info/terms" className="transition-colors hover:text-[#e4d2a8]">
+              <Link href="/info/terms-and-conditions" className="transition-colors hover:text-[#e4d2a8]">
                 Terms &amp; Conditions
               </Link>
-              <Link href="/info/privacy" className="transition-colors hover:text-[#e4d2a8]">
+              <Link href="/info/privacy-notice" className="transition-colors hover:text-[#e4d2a8]">
                 Privacy Notice
               </Link>
-              <Link href="/info/faq" className="transition-colors hover:text-[#e4d2a8]">
+              <Link href="/info/disclaimer" className="transition-colors hover:text-[#e4d2a8]">
                 Disclaimer
               </Link>
               <div className="pl-2">

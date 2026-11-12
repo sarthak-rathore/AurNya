@@ -1,5 +1,6 @@
 'use client';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { adminFetch } from './api';
 import Link from 'next/link';
 import {
   BagIcon, BoxIcon, RupeeCoinIcon, UsersIcon, EyeIcon,
@@ -592,7 +593,24 @@ export function StoreControlsWidget() {
     maintenance: false,
   });
 
-  const toggle = (k: keyof typeof controls) => setControls((c) => ({ ...c, [k]: !c[k] }));
+  useEffect(() => {
+    fetch('/api/store-controls')
+      .then((r) => (r.ok ? r.json() : null))
+      .then((data) => {
+        if (data && typeof data === 'object') {
+          setControls((prev) => ({ ...prev, ...data }));
+        }
+      })
+      .catch(() => {});
+  }, []);
+
+  const toggle = async (k: keyof typeof controls) => {
+    const next = { ...controls, [k]: !controls[k] };
+    setControls(next);
+    try {
+      await adminFetch('/api/admin/section/store-controls', 'PUT', { value: next });
+    } catch {}
+  };
 
   const rows: { key: keyof typeof controls; label: string; icon: string }[] = [
     { key: 'live', label: 'Website Live', icon: '🌐' },

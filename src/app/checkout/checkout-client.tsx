@@ -60,6 +60,29 @@ export function CheckoutClient() {
   const [selectedAddrId, setSelectedAddrId] = useState<number | null>(null);
   const [addrForm, setAddrForm] = useState<AddressForm>(emptyAddr);
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('razorpay');
+  const [storeControls, setStoreControls] = useState({
+    live: true,
+    orders: true,
+    onlinePay: true,
+    cod: true,
+    maintenance: false,
+  });
+
+  useEffect(() => {
+    fetch('/api/store-controls')
+      .then(r => r.ok ? r.json() : null)
+      .then(d => {
+        if (d && typeof d === 'object') {
+          setStoreControls(d);
+          if (d.onlinePay === false && d.cod === true) {
+            setPaymentMethod('cod');
+          } else if (d.cod === false && d.onlinePay === true) {
+            setPaymentMethod('razorpay');
+          }
+        }
+      })
+      .catch(() => {});
+  }, []);
   const [quote, setQuote] = useState<Quote | null>(null);
   const [quoteLoading, setQuoteLoading] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -261,6 +284,12 @@ export function CheckoutClient() {
         <h1 className="mt-3 font-serif text-5xl">Checkout</h1>
       </div>
 
+      {!storeControls.orders && (
+        <div className="mb-8 rounded-2xl border border-amber-300 bg-amber-50 p-4 text-xs font-semibold text-amber-900">
+          ⚠️ Note from the Atelier: AurNya is currently pausing new order placements for inventory auditing. You may still browse or save pieces to your wishlist.
+        </div>
+      )}
+
       {/* Step indicator */}
       <div className="mb-8 flex gap-6">
         {(['address', 'payment', 'review'] as Step[]).map((s, i) => (
@@ -338,32 +367,42 @@ export function CheckoutClient() {
             <section className="rounded-3xl border border-charcoal/10 bg-ivory p-6 md:p-8">
               <h2 className="mb-6 font-serif text-3xl">Payment method</h2>
               <div className="space-y-3">
-                <button type="button" onClick={() => setPaymentMethod('razorpay')}
-                  className={`flex w-full items-start gap-4 rounded-2xl border p-5 text-left transition ${paymentMethod === 'razorpay' ? 'border-charcoal bg-charcoal/5' : 'border-charcoal/10 hover:border-charcoal/30'}`}>
-                  <span className={`mt-0.5 grid h-5 w-5 shrink-0 place-items-center rounded-full border-2 ${paymentMethod === 'razorpay' ? 'border-charcoal' : 'border-charcoal/20'}`}>
-                    {paymentMethod === 'razorpay' && <span className="h-2.5 w-2.5 rounded-full bg-charcoal" />}
-                  </span>
-                  <div>
-                    <p className="font-medium">Pay online</p>
-                    <p className="text-sm text-muted">UPI, cards, net banking via Razorpay. Secure and instant.</p>
-                    <div className="mt-2 flex gap-2 text-xs text-muted">
-                      {['UPI', 'Visa', 'Mastercard', 'Net Banking', 'Wallets'].map(m => (
-                        <span key={m} className="rounded bg-surface px-2 py-0.5">{m}</span>
-                      ))}
+                {storeControls.onlinePay && (
+                  <button type="button" onClick={() => setPaymentMethod('razorpay')}
+                    className={`flex w-full items-start gap-4 rounded-2xl border p-5 text-left transition ${paymentMethod === 'razorpay' ? 'border-charcoal bg-charcoal/5' : 'border-charcoal/10 hover:border-charcoal/30'}`}>
+                    <span className={`mt-0.5 grid h-5 w-5 shrink-0 place-items-center rounded-full border-2 ${paymentMethod === 'razorpay' ? 'border-charcoal' : 'border-charcoal/20'}`}>
+                      {paymentMethod === 'razorpay' && <span className="h-2.5 w-2.5 rounded-full bg-charcoal" />}
+                    </span>
+                    <div>
+                      <p className="font-medium">Pay online</p>
+                      <p className="text-sm text-muted">UPI, cards, net banking via Razorpay. Secure and instant.</p>
+                      <div className="mt-2 flex gap-2 text-xs text-muted">
+                        {['UPI', 'Visa', 'Mastercard', 'Net Banking', 'Wallets'].map(m => (
+                          <span key={m} className="rounded bg-surface px-2 py-0.5">{m}</span>
+                        ))}
+                      </div>
                     </div>
-                  </div>
-                </button>
+                  </button>
+                )}
 
-                <button type="button" onClick={() => setPaymentMethod('cod')}
-                  className={`flex w-full items-start gap-4 rounded-2xl border p-5 text-left transition ${paymentMethod === 'cod' ? 'border-charcoal bg-charcoal/5' : 'border-charcoal/10 hover:border-charcoal/30'}`}>
-                  <span className={`mt-0.5 grid h-5 w-5 shrink-0 place-items-center rounded-full border-2 ${paymentMethod === 'cod' ? 'border-charcoal' : 'border-charcoal/20'}`}>
-                    {paymentMethod === 'cod' && <span className="h-2.5 w-2.5 rounded-full bg-charcoal" />}
-                  </span>
-                  <div>
-                    <p className="font-medium">Cash on Delivery</p>
-                    <p className="text-sm text-muted">Pay when your order arrives. Extra charge of {formatINR(COD_SURCHARGE)} applies.</p>
+                {storeControls.cod && (
+                  <button type="button" onClick={() => setPaymentMethod('cod')}
+                    className={`flex w-full items-start gap-4 rounded-2xl border p-5 text-left transition ${paymentMethod === 'cod' ? 'border-charcoal bg-charcoal/5' : 'border-charcoal/10 hover:border-charcoal/30'}`}>
+                    <span className={`mt-0.5 grid h-5 w-5 shrink-0 place-items-center rounded-full border-2 ${paymentMethod === 'cod' ? 'border-charcoal' : 'border-charcoal/20'}`}>
+                      {paymentMethod === 'cod' && <span className="h-2.5 w-2.5 rounded-full bg-charcoal" />}
+                    </span>
+                    <div>
+                      <p className="font-medium">Cash on Delivery</p>
+                      <p className="text-sm text-muted">Pay when your order arrives. Extra charge of {formatINR(COD_SURCHARGE)} applies.</p>
+                    </div>
+                  </button>
+                )}
+
+                {!storeControls.onlinePay && !storeControls.cod && (
+                  <div className="rounded-2xl border border-charcoal/20 bg-surface p-5 text-sm text-muted">
+                    Payment methods are currently offline. New order placement is paused.
                   </div>
-                </button>
+                )}
               </div>
 
               <div className="mt-6 flex gap-3">
@@ -418,8 +457,8 @@ export function CheckoutClient() {
 
               <div className="flex gap-3">
                 <button type="button" onClick={() => setStep('payment')} className={outlineBtn}>← Back</button>
-                <button type="button" onClick={placeOrder} disabled={busy} className="flex-1 rounded-full bg-charcoal py-3.5 text-xs uppercase tracking-widest text-ivory hover:bg-plum disabled:opacity-40">
-                  {busy ? 'Placing order…' : paymentMethod === 'cod' ? 'Place order (COD)' : 'Pay now →'}
+                <button type="button" onClick={placeOrder} disabled={busy || !storeControls.orders || (!storeControls.onlinePay && !storeControls.cod)} className="flex-1 rounded-full bg-charcoal py-3.5 text-xs uppercase tracking-widest text-ivory hover:bg-plum disabled:opacity-40">
+                  {busy ? 'Placing order…' : !storeControls.orders ? 'Ordering Paused' : paymentMethod === 'cod' ? 'Place order (COD)' : 'Pay now →'}
                 </button>
               </div>
               <p className="mt-3 text-center text-xs text-muted">By placing your order you agree to our Terms of Service and Privacy Policy.</p>

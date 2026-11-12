@@ -5,7 +5,7 @@ import { z } from 'zod';
  * and the demo orders). Each one is saved as one JSON document. This is what makes their Save buttons real, and it means every one of them
  * goes through the owner-approval gate like any other change.
  */
-export const SECTION_KEYS = ['categories', 'collections', 'content', 'marketing', 'settings', 'orders-demo', 'coupons-demo'] as const;
+export const SECTION_KEYS = ['categories', 'collections', 'content', 'marketing', 'settings', 'orders-demo', 'coupons-demo', 'store-controls'] as const;
 export type SectionKey = (typeof SECTION_KEYS)[number];
 export const isSectionKey = (k: string): k is SectionKey => (SECTION_KEYS as readonly string[]).includes(k);
 
